@@ -36,15 +36,26 @@ keyring = { version = "3.2.0", features = [
     "linux-native",
 ] }
 uuid = { version = "1.3.0", features = ["v4"] }
-sqlx = { version = "0.8", features = [ "runtime-tokio", "sqlite", "migrate", "macros", "chrono", "derive", "json" ] }
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "sqlite",
+    "migrate",
+    "macros",
+    "chrono",
+    "derive",
+    "json",
+] }
 base64 = "0.22"
-nostr-openmls = { version = "0.1.0", git="https://github.com/erskingardner/nostr-openmls", branch="master" }
+nostr-openmls = { version = "0.1.0", git = "https://github.com/erskingardner/nostr-openmls", branch = "master" }
 tauri-plugin-clipboard-manager = "2.2.1"
 tauri-plugin-notification = "2.2.1"
+reqwest = { version = "0.12.12", default-features = false, features = [
+    "rustls-tls",
+] }
 
 [target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
 nostr-sdk = { version = "0.38", features = [
-    "ndb",  # Use NDB for macOS and iOS
+    "ndb",   # Use NDB for macOS and iOS
     "nip04",
     "nip44",
     "nip59",

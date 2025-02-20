@@ -16,6 +16,7 @@ pub mod query;
 pub mod search;
 pub mod subscriptions;
 pub mod sync;
+pub mod upload;
 
 #[derive(Error, Debug)]
 pub enum NostrManagerError {
