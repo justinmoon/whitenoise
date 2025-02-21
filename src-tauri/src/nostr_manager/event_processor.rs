@@ -372,6 +372,7 @@ impl EventProcessor {
         };
 
         // Decrypt events using export secret key
+        // FIXME: should we hit blossom servers here to populate a cache of messages?
         let decrypted_content = nip44::decrypt_to_bytes(
             nostr_keys.secret_key(),
             &nostr_keys.public_key(),

@@ -53,6 +53,7 @@ tauri-plugin-notification = "2.2.1"
 reqwest = { version = "0.12.12", default-features = false, features = [
     "rustls-tls",
 ] }
+sha256 = "1.5.0"
 
 [target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
 nostr-sdk = { version = "0.38", features = [

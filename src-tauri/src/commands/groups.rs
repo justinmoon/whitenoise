@@ -105,6 +105,11 @@ pub async fn get_group_and_messages(
         .messages(wn.clone())
         .await
         .map_err(|e| format!("Error fetching messages: {}", e))?;
+
+    // FIXME: map over all messages, download blossom images, and either
+    // return them or save them to local cache and add another method to 
+    // fetch from the cache
+
     tracing::debug!(
         target: "whitenoise::commands::groups::get_group_and_messages",
         "Messages: {:?}",
@@ -413,39 +418,20 @@ pub async fn send_mls_message(
     media: Vec<Vec<u8>>,
 ) -> Result<UnsignedEvent, String> {
     let nostr_keys = wn.nostr.client.signer().await.map_err(|e| e.to_string())?;
+    let media_hashes: Vec<String> = media
+        .iter()
+        .map(|file| {
+            sha256::digest(file)
+        })
+        .collect();
 
-    // Upload all media files concurrently and collect their URLs
-    let media_urls = if !media.is_empty() {
-        let upload_futures: Vec<_> = media
-            .into_iter()
-            .map(|file| wn.nostr.blossom.upload(file))
-            .collect();
-
-        tracing::info!("upload start");
-        let upload_results = futures::future::join_all(upload_futures)
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| format!("Failed to upload media: {}", e))?;
-        tracing::info!("upload success");
-
-        let urls: Vec<String> = upload_results
-            .into_iter()
-            .map(|descriptor| descriptor.url)
-            .collect();
-
-        Some(urls.join(" "))
-    } else {
-        None
-    };
-
-    // Create an unsigned nostr event with the message and media URLs if present
-    let message = if let Some(urls) = media_urls {
-        format!("{}\n\n{}", message, urls)
-    } else {
-        message
-    };
-
+    let media_urls: Vec<String> = media_hashes
+        .iter()
+        .map(|hash| format!("http://localhost:3000/{}", hash))
+        .collect();
+    let message = format!("{}\n\n{}", message, media_urls.join(" "));
+        
+    // FIXME: need to know message here
     let mut inner_event = UnsignedEvent::new(
         nostr_keys
             .get_public_key()
@@ -454,7 +440,7 @@ pub async fn send_mls_message(
         Timestamp::now(),
         kind.into(),
         tags.unwrap_or_default(),
-        message,
+        message.clone(),
     );
     inner_event.ensure_id();
     let json_event_string = serde_json::to_string(&inner_event).map_err(|e| e.to_string())?;
@@ -483,6 +469,50 @@ pub async fn send_mls_message(
     .map_err(|e| e.to_string())?;
 
     let export_nostr_keys = Keys::parse(&export_secret_hex).map_err(|e| e.to_string())?;
+
+    // Upload all media files concurrently and collect their URLs
+    let media_urls = if !media.is_empty() {
+        let upload_futures: Vec<_> = media
+            .into_iter()
+            .map(|file| {
+                let encrypted_content = nip44::encrypt(
+                    export_nostr_keys.secret_key(),
+                    &export_nostr_keys.public_key(),
+                    &serialized_message,
+                    nip44::Version::V2,
+                )
+                .map_err(|e| e.to_string())
+                .unwrap(); // FIXME
+                encrypted_content.bytes().collect()
+            })
+            .map(|file| wn.nostr.blossom.upload(file))
+            .collect();
+
+        tracing::info!("upload start");
+        let upload_results = futures::future::join_all(upload_futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Failed to upload media: {}", e))?;
+        tracing::info!("upload success");
+
+        let urls: Vec<String> = upload_results
+            .into_iter()
+            .map(|descriptor| descriptor.url)
+            .collect();
+
+        Some(urls.join(" "))
+    } else {
+        None
+    };
+
+    // Create an unsigned nostr event with the message and media URLs if present
+    // FIXME: we could just return these from the block above instead of options
+    let message = if let Some(urls) = media_urls {
+        format!("{}\n\n{}", message, urls)
+    } else {
+        message
+    };
 
     let encrypted_content = nip44::encrypt(
         export_nostr_keys.secret_key(),
