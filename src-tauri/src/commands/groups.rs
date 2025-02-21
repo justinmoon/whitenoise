@@ -421,11 +421,13 @@ pub async fn send_mls_message(
             .map(|file| wn.nostr.blossom.upload(file))
             .collect();
 
+        tracing::info!("upload start");
         let upload_results = futures::future::join_all(upload_futures)
             .await
             .into_iter()
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| format!("Failed to upload media: {}", e))?;
+        tracing::info!("upload success");
 
         let urls: Vec<String> = upload_results
             .into_iter()

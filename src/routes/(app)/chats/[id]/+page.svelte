@@ -289,12 +289,12 @@ function reactionsForMessage(message: NEvent): { content: string; count: number 
 }
 
 function extractMedia(content: string) {
-    const jpgRegex = /https?:\/\/[^\s]+\.jpg/gi;
+    const jpgRegex = /https?:\/\/[^\s]+\.jpe?g/gi;
     return content.match(jpgRegex) || [];
 }
 
 function extractContent(content: string) {
-    const jpgRegex = /https?:\/\/[^\s]+\.jpg/gi;
+    const jpgRegex = /https?:\/\/[^\s]+\.jpe?g/gi;
     return content.replace(jpgRegex, '').trim();
 }
 

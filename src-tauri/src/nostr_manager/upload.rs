@@ -42,11 +42,15 @@ impl BlossomClient {
         file: Vec<u8>,
     ) -> Result<BlobDescriptor, Box<dyn std::error::Error + Send + Sync>> {
         let client = reqwest::Client::new();
+        tracing::info!("uploading file inner");
         let response = client
             .put(format!("{}/upload", self.url))
+            .header("Content-Type", "image/jpeg") // FIXME
+            .header("Content-Length", file.len())
             .body(file)
             .send()
             .await?;
+        tracing::info!("uploading file done");
 
         if !response.status().is_success() {
             return Err(format!("Upload failed with status: {}", response.status()).into());
@@ -88,7 +92,9 @@ mod tests {
             .await
             .expect("Failed to upload file");
 
-        println!("Uploaded file descriptor: {:?}", blob_descriptor);
+        // Content-Type resulted in a .jpeg extension in the URL
+        // frontend will only notice it's a jpeg based on file extention.
+        assert!(blob_descriptor.url.ends_with(".jpeg"));
 
         // Now download the file and verify contents
         let downloaded_bytes = client
