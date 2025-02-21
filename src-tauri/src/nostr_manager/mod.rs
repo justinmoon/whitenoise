@@ -9,6 +9,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use thiserror::Error;
 use tokio::{spawn, sync::Mutex};
+use upload::BlossomClient;
 
 pub mod event_processor;
 pub mod fetch;
@@ -47,6 +48,7 @@ pub struct NostrManagerSettings {
 #[derive(Debug, Clone)]
 pub struct NostrManager {
     pub client: Client,
+    pub blossom: BlossomClient,
     pub settings: Arc<Mutex<NostrManagerSettings>>,
     event_processor: Arc<Mutex<EventProcessor>>,
 }
@@ -109,6 +111,7 @@ impl NostrManager {
 
         Ok(Self {
             client,
+            blossom: BlossomClient::new("http://localhost:3000"),
             settings: Arc::new(Mutex::new(settings)),
             event_processor,
         })

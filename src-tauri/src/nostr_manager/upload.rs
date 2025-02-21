@@ -1,3 +1,31 @@
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct CompressionParams {
+    pub quality: u32,
+    pub mode: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct CompressedInfo {
+    pub sha256: String,
+    pub size: u64,
+    pub library: String,
+    pub version: String,
+    pub parameters: CompressionParams,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct BlobDescriptor {
+    pub url: String,
+    pub sha256: String,
+    pub size: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    pub uploaded: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compressed: Option<CompressedInfo>,
+}
+
+#[derive(Clone, Debug)]
 pub struct BlossomClient {
     url: String,
 }
@@ -9,9 +37,10 @@ impl BlossomClient {
         }
     }
 
-    pub async fn upload(&self, file_path: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let file = tokio::fs::read(file_path).await?;
-
+    pub async fn upload(
+        &self,
+        file: Vec<u8>,
+    ) -> Result<BlobDescriptor, Box<dyn std::error::Error + Send + Sync>> {
         let client = reqwest::Client::new();
         let response = client
             .put(format!("{}/upload", self.url))
@@ -23,11 +52,14 @@ impl BlossomClient {
             return Err(format!("Upload failed with status: {}", response.status()).into());
         }
 
-        let json: serde_json::Value = response.json().await?;
-        Ok(json["url"].as_str().unwrap_or_default().to_string())
+        let blob_descriptor: BlobDescriptor = response.json().await?;
+        Ok(blob_descriptor)
     }
 
-    pub async fn download(&self, url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    pub async fn download(
+        &self,
+        url: &str,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
         let client = reqwest::Client::new();
         let response = client.get(url).send().await?;
 
@@ -42,42 +74,31 @@ impl BlossomClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_upload() {
         let client = BlossomClient::new("http://localhost:3000");
 
-        // Path to the test image
-        // FIXME: generate a random image every time ...
-        let file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("pic.jpg");
+        // Generate random bytes for testing
+        let random_bytes: Vec<u8> = uuid::Uuid::new_v4().as_bytes().to_vec();
 
         // First upload the file
-        let url = client
-            .upload(file_path.to_str().unwrap())
+        let blob_descriptor = client
+            .upload(random_bytes.clone())
             .await
             .expect("Failed to upload file");
 
-        println!("Uploaded file URL: {}", url);
+        println!("Uploaded file descriptor: {:?}", blob_descriptor);
 
         // Now download the file and verify contents
         let downloaded_bytes = client
-            .download(&url)
+            .download(&blob_descriptor.url)
             .await
             .expect("Failed to download file");
 
-        // Read original file for comparison
-        let original_bytes = tokio::fs::read(&file_path)
-            .await
-            .expect("Failed to read original file");
-
+        // Assert that we got the same bytes back
         assert_eq!(
-            downloaded_bytes.len(),
-            original_bytes.len(),
-            "Downloaded file size doesn't match original"
-        );
-        assert_eq!(
-            downloaded_bytes, original_bytes,
+            downloaded_bytes, random_bytes,
             "Downloaded file contents don't match original"
         );
     }

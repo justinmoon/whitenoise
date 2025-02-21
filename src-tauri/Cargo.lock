@@ -6907,6 +6907,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
+ "futures",
  "keyring",
  "nostr-openmls",
  "nostr-sdk",

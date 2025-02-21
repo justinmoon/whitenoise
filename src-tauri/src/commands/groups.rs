@@ -414,10 +414,36 @@ pub async fn send_mls_message(
 ) -> Result<UnsignedEvent, String> {
     let nostr_keys = wn.nostr.client.signer().await.map_err(|e| e.to_string())?;
 
-    if !media.is_empty() {
-        tracing::debug!(target: "whitenoise::groups::send_mls_message", "found media");
-    }
-    // Create an unsigned nostr event with the message
+    // Upload all media files concurrently and collect their URLs
+    let media_urls = if !media.is_empty() {
+        let upload_futures: Vec<_> = media
+            .into_iter()
+            .map(|file| wn.nostr.blossom.upload(file))
+            .collect();
+
+        let upload_results = futures::future::join_all(upload_futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Failed to upload media: {}", e))?;
+
+        let urls: Vec<String> = upload_results
+            .into_iter()
+            .map(|descriptor| descriptor.url)
+            .collect();
+
+        Some(urls.join(" "))
+    } else {
+        None
+    };
+
+    // Create an unsigned nostr event with the message and media URLs if present
+    let message = if let Some(urls) = media_urls {
+        format!("{}\n\n{}", message, urls)
+    } else {
+        message
+    };
+
     let mut inner_event = UnsignedEvent::new(
         nostr_keys
             .get_public_key()
