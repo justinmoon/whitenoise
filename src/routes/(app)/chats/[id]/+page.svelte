@@ -288,6 +288,16 @@ function reactionsForMessage(message: NEvent): { content: string; count: number 
     );
 }
 
+function extractMedia(content: string) {
+    const jpgRegex = /https?:\/\/[^\s]+\.jpg/gi;
+    return content.match(jpgRegex) || [];
+}
+
+function extractContent(content: string) {
+    const jpgRegex = /https?:\/\/[^\s]+\.jpg/gi;
+    return content.replace(jpgRegex, '').trim();
+}
+
 onDestroy(() => {
     unlistenMlsMessageProcessed();
     unlistenMlsMessageReceived();
@@ -348,7 +358,7 @@ onDestroy(() => {
                             <div class="flex {message.content.trim().length < 50 && !isSingleEmoji(message.content) ? "flex-row gap-6" : "flex-col gap-2 justify-end w-full"} items-end {isSingleEmoji(message.content) ? 'mb-4 my-6' : ''}">
                                 <div class="break-words {isSingleEmoji(message.content) ? 'text-7xl leading-none' : ''}">
                                     {#if message.content.trim().length > 0}
-                                        {message.content}
+                                        {extractContent(message.content)}
                                     {:else}
                                         <span class="italic opacity-60">No message content</span>
                                     {/if}
@@ -374,6 +384,13 @@ onDestroy(() => {
                                     </button>
                                 {/each}
                             </div>
+                            {#each extractMedia(message.content) as media}
+                            <img
+                                src={media}
+                                alt="FIXME"
+                                class="max-w-full rounded-lg mt-2"
+                                />
+                            {/each}
                         </div>
                     </div>
                 {/if}
