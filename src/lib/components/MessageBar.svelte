@@ -18,6 +18,7 @@ let {
 } = $props();
 
 let message = $state("");
+let media = $state<File[]>([]);
 let textarea: HTMLTextAreaElement;
 let sendingMessage: boolean = $state(false);
 
@@ -28,6 +29,10 @@ function adjustTextareaHeight() {
 
 function handleInput() {
     adjustTextareaHeight();
+}
+
+async function fileToBytes(file: File): Promise<Uint8Array> {
+    return new Uint8Array(await file.arrayBuffer());
 }
 
 async function sendMessage() {
@@ -59,16 +64,23 @@ async function sendMessage() {
     handleNewMessage(tmpMessage as NEvent, false);
     sendingMessage = true;
 
+    const serializedMedia = await Promise.all(media.map(file => fileToBytes(file)));
+    // const allBytes = bytesArrays.reduce((acc, curr) => {
+    //     return new Uint8Array([...acc, ...curr]);
+    // }, new Uint8Array());
+
     await invoke("send_mls_message", {
         group,
         message,
         kind,
         tags,
+        media: serializedMedia,
     })
         .then((messageEvent) => {
             handleNewMessage(messageEvent as NEvent, true);
             // Clear the message input and adjust the height of the textarea
             message = "";
+            media = [];
             setTimeout(adjustTextareaHeight, 0);
         })
         .finally(() => {
@@ -81,6 +93,25 @@ function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Enter") {
         sendMessage();
     }
+}
+
+function handlePaste(event: ClipboardEvent) {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (file) {
+                media = [...media, file];
+            }
+        }
+    }
+}
+
+function removeMedia(index: number) {
+    media = media.filter((_, i) => i !== index);
 }
 
 // Add keyboard visibility detection
@@ -107,6 +138,21 @@ onMount(() => {
             </button>
         </div>
     {/if}
+    {#if media.length > 0}
+        <div class="w-full p-4 bg-gray-800 border-t border-gray-700 flex flex-row gap-2 overflow-x-auto">
+            {#each media as file, index}
+                <div class="relative">
+                    <img src={URL.createObjectURL(file)} alt="Pasted media" class="h-32 w-auto rounded-lg object-cover" />
+                    <button 
+                        onclick={() => removeMedia(index)}
+                        class="absolute -top-2 -right-2 p-1 bg-gray-900 hover:bg-gray-800 rounded-full"
+                    >
+                        <X size={16} class="text-white" />
+                    </button>
+                </div>
+            {/each}
+        </div>
+    {/if}
     <div class="flex flex-row px-8 py-4 gap-4 items-center border-t border-gray-700">
         <textarea
             id="newMessageInput"
@@ -116,6 +162,7 @@ onMount(() => {
             bind:value={message}
             oninput={handleInput}
             onkeydown={handleKeydown}
+            onpaste={handlePaste}
         ></textarea>
         <button
             class="p-3 bg-blue-700 rounded-full text-white ring-1 ring-blue-500 hover:bg-blue-600 disabled:hidden"

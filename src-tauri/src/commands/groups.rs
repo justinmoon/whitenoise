@@ -410,9 +410,13 @@ pub async fn send_mls_message(
     tags: Option<Vec<Tag>>,
     wn: tauri::State<'_, Whitenoise>,
     app_handle: tauri::AppHandle,
+    media: Vec<Vec<u8>>,
 ) -> Result<UnsignedEvent, String> {
     let nostr_keys = wn.nostr.client.signer().await.map_err(|e| e.to_string())?;
 
+    if !media.is_empty() {
+        tracing::debug!(target: "whitenoise::groups::send_mls_message", "found media");
+    }
     // Create an unsigned nostr event with the message
     let mut inner_event = UnsignedEvent::new(
         nostr_keys
