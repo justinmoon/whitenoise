@@ -302,7 +302,7 @@ dependencies = [
  "bitflags 2.9.0",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools",
  "lazy_static",
  "lazycell",
  "log",
@@ -568,7 +568,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eccb054f56cbd38340b380d4a8e69ef1f02f1af43db2f0cc817a4774d80ae071"
 dependencies = [
  "clap_builder",
- "clap_derive",
 ]
 
 [[package]]
@@ -581,18 +580,6 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
-]
-
-[[package]]
-name = "clap_derive"
-version = "4.5.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09176aae279615badda0765c0c0b3f6ed53f4709118af73cf4655d85d1530cd7"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 2.0.101",
 ]
 
 [[package]]
@@ -1917,15 +1904,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2652,20 +2630,6 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
-
-[[package]]
-name = "petname"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cd31dcfdbbd7431a807ef4df6edd6473228e94d5c805e8cf671227a21bad068"
-dependencies = [
- "anyhow",
- "clap",
- "itertools 0.14.0",
- "proc-macro2",
- "quote",
- "rand 0.8.5",
-]
 
 [[package]]
 name = "phf"
@@ -4730,7 +4694,6 @@ dependencies = [
  "nostr-mls-sqlite-storage",
  "nostr-sdk",
  "nwc",
- "petname",
  "rand 0.9.1",
  "reqwest 0.11.27",
  "serde",

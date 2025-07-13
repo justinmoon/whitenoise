@@ -142,8 +142,7 @@ impl Account {
     ///
     /// This function generates a new cryptographic keypair, initializes an `Account` struct
     /// with default metadata, settings, onboarding flags, relays, and other fields. It also
-    /// generates a random petname for the account, which is set as both the `name` and
-    /// `display_name` in the account's metadata.
+    /// generates an account with default metadata (no profile names set).
     ///
     /// # Returns
     ///
@@ -189,7 +188,7 @@ impl Whitenoise {
     /// Creates a new identity (account) for the user.
     ///
     /// This method performs the following steps:
-    /// - Generates a new account with a keypair and petname.
+    /// - Generates a new account with a keypair.
     /// - Saves the account to the database.
     /// - Stores the private key in the secret store.
     /// - Initializes NostrMls for the account with SQLite storage.
@@ -204,7 +203,7 @@ impl Whitenoise {
     ///
     /// Returns a [`WhitenoiseError`] if any step fails, such as account creation, database save, key storage, or onboarding.
     pub async fn create_identity(&self) -> Result<Account> {
-        // Create a new account with a generated keypair and a petname
+        // Create a new account with a generated keypair
         let (mut account, keys) = Account::new()?;
 
         // Save the account to the database
@@ -815,32 +814,7 @@ impl Whitenoise {
 
         let default_relays = self.nostr.relays().await?;
 
-        // Generate a petname for the account (two words, separated by a space)
-        let petname_raw = petname::petname(2, " ").unwrap_or_else(|| "Anonymous User".to_string());
-
-        // Capitalize each word in the petname
-        let petname = petname_raw
-            .split_whitespace()
-            .map(|word| {
-                let mut chars = word.chars();
-                match chars.next() {
-                    None => String::new(),
-                    Some(first_char) => {
-                        let first_upper = first_char.to_uppercase().collect::<String>();
-                        first_upper + chars.as_str()
-                    }
-                }
-            })
-            .collect::<Vec<String>>()
-            .join(" ");
-
-        let metadata = Metadata {
-            name: Some(petname.clone()),
-            display_name: Some(petname),
-            ..Default::default()
-        };
-
-        self.update_metadata(&metadata, &account.pubkey).await?;
+        // Do not generate any default metadata - accounts must set their own profile names
 
         // Also publish relay lists to Nostr
         self.publish_relay_list_for_account(account, default_relays.clone(), RelayType::Nostr)
