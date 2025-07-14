@@ -235,6 +235,71 @@ impl Whitenoise {
         Ok(account)
     }
 
+    /// Creates a new identity using a provided private key (nsec or hex format).
+    ///
+    /// This method is similar to `create_identity` but uses a provided private key instead
+    /// of generating a new one. It performs the full onboarding process including uploading
+    /// key packages to relays.
+    ///
+    /// # Arguments
+    ///
+    /// * `nsec_or_hex_privkey` - The private key as a nsec string or hex-encoded string.
+    ///
+    /// # Returns
+    ///
+    /// Returns the newly created `Account` on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`WhitenoiseError`] if any step fails.
+    pub async fn create_identity_with_nsec(&self, nsec_or_hex_privkey: &str) -> Result<Account> {
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Starting identity creation");
+
+        // Parse the provided private key
+        let keys = Keys::parse(nsec_or_hex_privkey)?;
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Parsed keys, pubkey: {}", keys.public_key().to_hex());
+
+        // Create account struct
+        let mut account = Account {
+            pubkey: keys.public_key(),
+            settings: AccountSettings::default(),
+            onboarding: OnboardingState::default(),
+            last_synced: Timestamp::zero(),
+            nostr_mls: Arc::new(Mutex::new(None)),
+        };
+
+        // Save the account to the database
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Saving account to database");
+        self.save_account(&account).await?;
+
+        // Add the keys to the secret store
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Storing private key");
+        self.secrets_store.store_private_key(&keys)?;
+
+        // Initialize NostrMls for the account
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Initializing NostrMls");
+        self.initialize_nostr_mls_for_account(&account).await?;
+
+        // Add the account to the in-memory accounts list BEFORE onboarding
+        // This is required because onboard_new_account checks if the account is logged in
+        {
+            tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Adding account to in-memory list");
+            let mut accounts = self.write_accounts().await;
+            accounts.insert(account.pubkey, account.clone());
+        }
+
+        // Onboard the account (this uploads key packages)
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Onboarding account");
+        self.onboard_new_account(&mut account).await?;
+
+        // Initialize subscriptions on nostr manager
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Setting up subscriptions");
+        self.setup_subscriptions(&account).await?;
+
+        tracing::debug!(target: "whitenoise::create_identity_with_nsec", "Identity creation completed successfully");
+        Ok(account)
+    }
+
     /// Logs in an existing user using a private key (nsec or hex format).
     ///
     /// This method performs the following steps:
